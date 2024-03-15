@@ -26,28 +26,25 @@ def db_init():
 
 def write_new_hosts(connection, data):
     sql = "insert into hosts(ip, mac, vendor, isknown) values(%s, %s, %s, %s)"
-    with connection:
-        with connection.cursor() as cursor:
-            cursor.execute(sql, (data["ip"], data["mac"], data["vendor"], 0))
-        connection.commit()
+    with connection.cursor() as cursor:
+        cursor.execute(sql, (data["ip"], data["mac"], data["vendor"], 0))
+    connection.commit()
 
 def db_maccheck(connection, data):
-    with connection:
-        with connection.cursor() as cursor:
-            sql = "select count(*) from hosts where mac = %s"
-            cursor.execute(sql, (data["mac"]))
-            result = cursor.fetchone()
-            if result["count(*)"] == 0:
-                return data
+    with connection.cursor() as cursor:
+        sql = "select count(*) from hosts where mac = %s"
+        cursor.execute(sql, (data["mac"]))
+        result = cursor.fetchone()
+        if result["count(*)"] == 0:
+            return data
     return None
 
 def db_get_foriegn_boxen(connection):
-    with connection:
-        with connection.cursor() as cursor:
-            sql = "select ip from hosts where isknown = 0"
-            cursor.execute(sql)
-            result = cursor.fetchall()
-            return result
+    with connection.cursor() as cursor:
+        sql = "select ip from hosts where isknown = 0"
+        cursor.execute(sql)
+        result = cursor.fetchall()
+        return result
 
 def alert_on_bad_boxen(data):
     creds = open("/Raid/homes/sarif/beacon.txt","r")
@@ -57,15 +54,14 @@ def alert_on_bad_boxen(data):
 
 if __name__ == "__main__":
     while(True):
+        connection = db_init()
         data = arpscan(sys.argv[1])
         #insert into db if not tracked
         for line in data:
-            connection = db_init()
             if db_maccheck(connection, line) is not None:
-                connection = db_init()
                 write_new_hosts(connection, line)
 
-        connection = db_init()
         bad_boxen = db_get_foriegn_boxen(connection)
         alert_on_bad_boxen(bad_boxen)
+        connection.close()
         time.sleep(60)
