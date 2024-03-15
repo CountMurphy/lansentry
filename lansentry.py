@@ -2,6 +2,7 @@ import sys
 import subprocess
 import requests
 import json
+import pymysql.cursors
 
 def arpscan(iface):
     output = subprocess.run(["arp-scan", "-glNx", "-I", iface], capture_output = True)
@@ -14,5 +15,22 @@ def arpscan(iface):
         retdata.append(json_obj)
     return retdata
 
+def db_init():
+    connection = pymysql.connect(host='localhost',
+                             user='lansentry',
+                             password='3WKbnuzBEgM7ysuYVg68ogwMvcf7zfRu',
+                             database='lansentry',
+                             cursorclass=pymysql.cursors.DictCursor)
+    return connection
+
+def db_read(connection):
+    with connection:
+        with connection.cursor() as cursor:
+            sql = "select count(*) from hosts"
+            cursor.execute(sql)
+            print(cursor.fetchone())
+
 if __name__ == "__main__":
+    connection = db_init()
+    db_read(connection)
     data = arpscan(sys.argv[1])
