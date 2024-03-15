@@ -23,6 +23,13 @@ def db_init():
                              cursorclass=pymysql.cursors.DictCursor)
     return connection
 
+def write_new_hosts(connection, data):
+    sql = "insert into hosts(ip, mac, vendor, isknown) values(%s, %s, %s, %s)"
+    with connection:
+        with connection.cursor() as cursor:
+            cursor.execute(sql, (data["ip"], data["mac"], data["vendor"], 0))
+        connection.commit()
+
 def db_read(connection):
     with connection:
         with connection.cursor() as cursor:
@@ -31,6 +38,7 @@ def db_read(connection):
             print(cursor.fetchone())
 
 if __name__ == "__main__":
-    connection = db_init()
-    db_read(connection)
     data = arpscan(sys.argv[1])
+    for line in data:
+        connection = db_init()
+        write_new_hosts(connection, line)
