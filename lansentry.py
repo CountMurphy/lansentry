@@ -48,6 +48,12 @@ def db_get_foriegn_boxen(connection):
             result = cursor.fetchall()
             return result
 
+def alert_on_bad_boxen(data):
+    creds = open("/Raid/homes/sarif/beacon.txt","r")
+    credArray = creds.read().split(":")
+    for line in data:
+        r = requests.put("http://localhost:8082/harbinger", data = ("Unknown host:" + line["ip"]), headers={"Tag":"biohazard","prio":"high"}, auth=(credArray[0],credArray[1].strip()))
+
 if __name__ == "__main__":
     data = arpscan(sys.argv[1])
     #insert into db if not tracked
@@ -58,4 +64,5 @@ if __name__ == "__main__":
             write_new_hosts(connection, line)
 
     connection = db_init()
-    db_get_foriegn_boxen(connection)
+    bad_boxen = db_get_foriegn_boxen(connection)
+    alert_on_bad_boxen(bad_boxen)
