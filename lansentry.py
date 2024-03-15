@@ -3,6 +3,7 @@ import subprocess
 import requests
 import json
 import pymysql.cursors
+import time
 
 def arpscan(iface):
     output = subprocess.run(["arp-scan", "-glNx", "-I", iface], capture_output = True)
@@ -55,14 +56,16 @@ def alert_on_bad_boxen(data):
         r = requests.put("http://localhost:8082/harbinger", data = ("Unknown host:" + line["ip"]), headers={"Tag":"biohazard","prio":"high"}, auth=(credArray[0],credArray[1].strip()))
 
 if __name__ == "__main__":
-    data = arpscan(sys.argv[1])
-    #insert into db if not tracked
-    for line in data:
-        connection = db_init()
-        if db_maccheck(connection, line) is not None:
+    while(True):
+        data = arpscan(sys.argv[1])
+        #insert into db if not tracked
+        for line in data:
             connection = db_init()
-            write_new_hosts(connection, line)
+            if db_maccheck(connection, line) is not None:
+                connection = db_init()
+                write_new_hosts(connection, line)
 
-    connection = db_init()
-    bad_boxen = db_get_foriegn_boxen(connection)
-    alert_on_bad_boxen(bad_boxen)
+        connection = db_init()
+        bad_boxen = db_get_foriegn_boxen(connection)
+        alert_on_bad_boxen(bad_boxen)
+        time.sleep(60)
