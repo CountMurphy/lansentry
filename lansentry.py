@@ -16,5 +16,3 @@ def arpscan(iface):
 
 if __name__ == "__main__":
     data = arpscan(sys.argv[1])
-    #test line
-    print(data)
