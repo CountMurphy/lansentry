@@ -6,6 +6,7 @@ import requests
 import json
 import pymysql.cursors
 import time
+from datetime import datetime
 
 def arpscan(iface):
     output = subprocess.run(["arp-scan", "-glNx", "-I", iface], capture_output = True)
@@ -27,9 +28,9 @@ def db_init():
     return connection
 
 def write_new_hosts(connection, data):
-    sql = "insert into hosts(ip, mac, vendor, isknown) values(%s, %s, %s, %s)"
+    sql = "insert into hosts(ip, mac, vendor, isknown, isGuest) values(%s, %s, %s, %s, %s)"
     with connection.cursor() as cursor:
-        cursor.execute(sql, (data["ip"], data["mac"], data["vendor"], 0))
+        cursor.execute(sql, (data["ip"], data["mac"], data["vendor"], 0, 0))
     connection.commit()
 
 def db_maccheck(connection, data):
@@ -43,10 +44,18 @@ def db_maccheck(connection, data):
 
 def db_get_foriegn_boxen(connection):
     with connection.cursor() as cursor:
-        sql = "select ip from hosts where isknown = 0"
+        sql = "select ip from hosts where isknown = 0 and isGuest = 0"
         cursor.execute(sql)
         result = cursor.fetchall()
+        mark_foriegn_as_guest(result)
         return result
+
+def mark_foriegn_as_guest(data):
+    with connection.cursor() as cursor:
+        for line in data:
+            sql = "update hosts set isGuest = 1 where ip = %s"
+            cursor.execute(sql, line["ip"])
+        connection.commit()
 
 def alert_on_bad_boxen(data):
     creds = open("/Raid/homes/sarif/beacon.txt","r")
@@ -54,9 +63,20 @@ def alert_on_bad_boxen(data):
     for line in data:
         r = requests.put("http://localhost:8082/harbinger", data = ("Unknown host:" + line["ip"]), headers={"Tag":"biohazard","prio":"high"}, auth=(credArray[0],credArray[1].strip()))
 
+
+def purge_bad_boxen():
+    with connection.cursor() as cursor:
+        sql = "delete from hosts where isGuest = 1"
+        cursor.execute(sql)
+        connection.commit()
+
+
 if __name__ == "__main__":
     while(True):
         connection = db_init()
+        # purge guest boxen at midnight
+        if datetime.now().hour == 13 and datetime.now().minute == 7:
+            purge_bad_boxen()
         data = arpscan(sys.argv[1])
         #insert into db if not tracked
         for line in data:
