@@ -61,7 +61,7 @@ def alert_on_bad_boxen(data):
     creds = open("/Raid/homes/sarif/beacon.txt","r")
     credArray = creds.read().split(":")
     for line in data:
-        r = requests.put("http://localhost:8082/harbinger", data = ("Unknown host:" + line["ip"]), headers={"Tag":"biohazard","prio":"high"}, auth=(credArray[0],credArray[1].strip()))
+        requests.put("http://localhost:8082/harbinger", data = ("Unknown host:" + line["ip"]), headers={"Tag":"biohazard","prio":"high"}, auth=(credArray[0],credArray[1].strip()))
 
 
 def purge_bad_boxen():
