@@ -35,12 +35,20 @@ def write_new_hosts(connection, data):
 
 def db_maccheck(connection, data):
     with connection.cursor() as cursor:
-        sql = "select count(*) from hosts where mac = %s"
+        sql = "select mac, ip from hosts where mac = %s"
         cursor.execute(sql, (data["mac"]))
         result = cursor.fetchone()
-        if result["count(*)"] == 0:
+        if result != None:
+            update_ips(connection,result, data)
             return data
     return None
+
+def update_ips(connection, data, arp_data):
+    with connection.cursor() as cursor:
+        sql = "update hosts set ip = %s where mac = %s"
+        cursor.execute(sql, (arp_data["ip"], data["mac"]))
+    connection.commit()
+    return
 
 def db_get_foriegn_boxen(connection):
     with connection.cursor() as cursor:
@@ -80,7 +88,7 @@ if __name__ == "__main__":
         data = arpscan(sys.argv[1])
         #insert into db if not tracked
         for line in data:
-            if db_maccheck(connection, line) is not None:
+            if db_maccheck(connection, line) is None:
                 write_new_hosts(connection, line)
 
         bad_boxen = db_get_foriegn_boxen(connection)
