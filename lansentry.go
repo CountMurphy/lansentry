@@ -1,9 +1,12 @@
 package main
 
 import (
+	"database/sql"
 	"fmt"
+	_ "github.com/go-sql-driver/mysql"
 	"os/exec"
 	"strings"
+	"time"
 )
 
 type host_obj struct {
@@ -29,6 +32,15 @@ func arpscan(iface string) []host_obj {
 		retVal = append(retVal, tmp_host)
 	}
 	return retVal
+}
+
+func db_init() *sql.DB {
+	db, err := sql.Open("mysql", "lansentry:3WKbnuzBEgM7ysuYVg68ogwMvcf7zfRu@10.20.1.102/lansentry")
+	if err != nil {
+		panic(err)
+	}
+	db.SetConnMaxLifetime(time.Minute * 3)
+	return db
 }
 
 func main() {
