@@ -3,7 +3,7 @@ package main
 import (
 	"database/sql"
 	"fmt"
-	_ "github.com/go-sql-driver/mysql"
+	_ "github.com/lib/pq"
 	"os/exec"
 	"strings"
 	"time"
@@ -37,7 +37,9 @@ func arpscan(iface string) []host_obj {
 }
 
 func db_init() *sql.DB {
-	db, err := sql.Open("mysql", "lansentry:3WKbnuzBEgM7ysuYVg68ogwMvcf7zfRu@10.20.1.102/lansentry")
+	connStr := "postgres://lansentry:3WKbnuzBEgM7ysuYVg68ogwMvcf7zfRu@localhost/lansentry"
+	db, err := sql.Open("postgres", connStr)
+	//db, err := sql.Open("mysql", "lansentry:3WKbnuzBEgM7ysuYVg68ogwMvcf7zfRu@10.20.1.102/lansentry")
 	if err != nil {
 		panic(err)
 	}
@@ -61,7 +63,15 @@ func db_maccheck(db *sql.DB, data host_obj) host_obj {
 	if err != nil {
 		panic(err)
 	}
-	stmt.Query(sql, data.mac)
+	row := stmt.QueryRow(sql, data.mac)
+	if err != nil {
+		panic(err)
+	}
+
+	var ret_val host_obj
+	row.Scan(&ret_val.mac, &ret_val.ip)
+	return ret_val
+
 }
 
 func main() {
