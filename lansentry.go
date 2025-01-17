@@ -10,9 +10,11 @@ import (
 )
 
 type host_obj struct {
-	ip     string
-	mac    string
-	vendor string
+	ip      string
+	mac     string
+	vendor  string
+	isknown bool
+	isGuest bool
 }
 
 func arpscan(iface string) []host_obj {
@@ -41,6 +43,25 @@ func db_init() *sql.DB {
 	}
 	db.SetConnMaxLifetime(time.Minute * 3)
 	return db
+}
+
+func write_new_hosts(db *sql.DB, data host_obj) {
+	sql := "insert into hosts(ip, mac, vendor, isknown, isGuest) values(?, ?, ?, ?, ?)"
+	stmt, err := db.Prepare(sql)
+	if err != nil {
+		panic(err)
+	}
+	stmt.Query(sql, data.ip, data.mac, data.vendor, data.isknown, data.isGuest)
+	stmt.Close()
+}
+
+func db_maccheck(db *sql.DB, data host_obj) host_obj {
+	sql := "select mac, ip from hosts where mac = ?"
+	stmt, err := db.Prepare(sql)
+	if err != nil {
+		panic(err)
+	}
+	stmt.Query(sql, data.mac)
 }
 
 func main() {
