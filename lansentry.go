@@ -38,7 +38,7 @@ func arpscan(iface string) []host_obj {
 }
 
 func db_init() *sql.DB {
-	connStr := "postgres://lansentry:3WKbnuzBEgM7ysuYVg68ogwMvcf7zfRu@localhost/lansentry"
+	connStr := "postgres://postgres:@localhost/lansentry?sslmode=disable"
 	db, err := sql.Open("postgres", connStr)
 	//db, err := sql.Open("mysql", "lansentry:3WKbnuzBEgM7ysuYVg68ogwMvcf7zfRu@10.20.1.102/lansentry")
 	if err != nil {
@@ -49,22 +49,22 @@ func db_init() *sql.DB {
 }
 
 func write_new_hosts(db *sql.DB, data host_obj) {
-	query := "insert into hosts(ip, mac, vendor, isknown, isGuest) values(?, ?, ?, ?, ?)"
+	query := "insert into hosts(ip, mac, vendor, isknown, isGuest) values($1, $2, $3, $4, $5)"
 	stmt, err := db.Prepare(query)
 	if err != nil {
 		panic(err)
 	}
-	stmt.Query(query, data.ip, data.mac, data.vendor, data.isknown, data.isGuest)
+	stmt.Query(data.ip, data.mac, data.vendor, data.isknown, data.isGuest)
 	stmt.Close()
 }
 
 func db_maccheck(db *sql.DB, data host_obj) host_obj {
-	query := "select mac, ip from hosts where mac = ?"
+	query := "select mac, ip from hosts where mac = $1"
 	stmt, err := db.Prepare(query)
 	if err != nil {
 		panic(err)
 	}
-	row := stmt.QueryRow(query, data.mac)
+	row := stmt.QueryRow(data.mac)
 
 	var ret_val host_obj
 	err = row.Scan(&ret_val.mac, &ret_val.ip)
@@ -72,7 +72,7 @@ func db_maccheck(db *sql.DB, data host_obj) host_obj {
 		update_ips(db, ret_val, data)
 		return data
 	}
-	if err != nil {
+	if err != nil && err != sql.ErrNoRows {
 		panic(err)
 	}
 	stmt.Close()
@@ -81,22 +81,22 @@ func db_maccheck(db *sql.DB, data host_obj) host_obj {
 }
 
 func update_ips(db *sql.DB, data host_obj, arp_data host_obj) {
-	query := "update hosts set ip = ? where mac = ?"
+	query := "update hosts set ip = $1 where mac = $2"
 	stmt, err := db.Prepare(query)
 	if err != nil {
 		panic(err)
 	}
-	stmt.Query(query, arp_data.ip, data.mac)
+	stmt.Query(arp_data.ip, data.mac)
 	stmt.Close()
 }
 
 func db_get_foriegn_boxen(db *sql.DB) []host_obj {
-	query := "select ip from hosts where isknown = 0 and isGuest = 0"
+	query := "select ip from hosts where isknown = false and isGuest = false"
 	stmt, err := db.Prepare(query)
 	if err != nil {
 		panic(err)
 	}
-	rows, err := stmt.Query(query)
+	rows, err := stmt.Query()
 	if err != nil {
 		panic(err)
 	}
@@ -114,12 +114,12 @@ func db_get_foriegn_boxen(db *sql.DB) []host_obj {
 }
 
 func mark_foriegn_as_guest(db *sql.DB, data host_obj) {
-	query := "update hosts set isGuest = 1 where ip = ?"
+	query := "update hosts set isGuest = true where ip = $1"
 	stmt, err := db.Prepare(query)
 	if err != nil {
 		panic(err)
 	}
-	stmt.Query(query, data.ip)
+	stmt.Query(data.ip)
 	stmt.Close()
 }
 
@@ -128,24 +128,26 @@ func alert_on_bad_boxen(data []host_obj) {
 }
 
 func purge_bad_boxen(db *sql.DB) {
-	query := "delete from hosts where isGuest = 1"
+	query := "delete from hosts where isGuest = true"
 	stmt, _ := db.Prepare(query)
-	stmt.Query(query)
+	stmt.Query()
 }
 
 func main() {
-	connection := db_init()
-	if time.Now().Hour() == 13 && time.Now().Minute() == 7 {
-		purge_bad_boxen(connection)
-	}
-	data := arpscan(os.Args[1])
-	for i := 0; i < len(data); i++ {
-		if db_maccheck(connection, data[i]).ip == "" {
-			write_new_hosts(connection, data[i])
+	for {
+		connection := db_init()
+		if time.Now().Hour() == 13 && time.Now().Minute() == 7 {
+			purge_bad_boxen(connection)
 		}
+		data := arpscan(os.Args[1])
+		for i := 0; i < len(data); i++ {
+			if db_maccheck(connection, data[i]).ip == "" {
+				write_new_hosts(connection, data[i])
+			}
+		}
+		bad_boxen := db_get_foriegn_boxen(connection)
+		alert_on_bad_boxen(bad_boxen)
+		connection.Close()
+		time.Sleep(60)
 	}
-	bad_boxen := db_get_foriegn_boxen(connection)
-	alert_on_bad_boxen(bad_boxen)
-	connection.Close()
-	time.Sleep(60)
 }
