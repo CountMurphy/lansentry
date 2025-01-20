@@ -148,6 +148,6 @@ func main() {
 		bad_boxen := db_get_foriegn_boxen(connection)
 		alert_on_bad_boxen(bad_boxen)
 		connection.Close()
-		time.Sleep(60)
+		time.Sleep(60 * time.Second)
 	}
 }
