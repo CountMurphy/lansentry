@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 	_ "github.com/lib/pq"
+	"os"
 	"os/exec"
 	"strings"
 	"time"
@@ -137,7 +138,7 @@ func main() {
 	if time.Now().Hour() == 13 && time.Now().Minute() == 7 {
 		purge_bad_boxen(connection)
 	}
-	data := arpscan("wlp170s0")
+	data := arpscan(os.Args[1])
 	for i := 0; i < len(data); i++ {
 		if db_maccheck(connection, data[i]).ip == "" {
 			write_new_hosts(connection, data[i])
