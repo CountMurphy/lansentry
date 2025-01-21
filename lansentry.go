@@ -3,11 +3,13 @@ package main
 import (
 	"database/sql"
 	"fmt"
-	_ "github.com/lib/pq"
+	"net/http"
 	"os"
 	"os/exec"
 	"strings"
 	"time"
+
+	_ "github.com/lib/pq"
 )
 
 type host_obj struct {
@@ -16,6 +18,26 @@ type host_obj struct {
 	vendor  string
 	isknown bool
 	isGuest bool
+}
+
+type config_obj struct {
+	postgres   string
+	ntfy_creds string
+	ntfy_link  string
+}
+
+var config config_obj
+
+func parse_config() {
+	settings, err := os.ReadFile("/etc/lansentry/app.conf")
+	if err != nil {
+		fmt.Println("Can't read config file")
+		panic(err)
+	}
+	settings_array := strings.Split(string(settings), "\n")
+	config.postgres = strings.TrimSpace(settings_array[1])
+	config.ntfy_link = strings.TrimSpace(settings_array[3])
+	config.ntfy_creds = strings.TrimSpace(settings_array[5])
 }
 
 func arpscan(iface string) []host_obj {
@@ -38,7 +60,7 @@ func arpscan(iface string) []host_obj {
 }
 
 func db_init() *sql.DB {
-	connStr := "postgres://postgres:@localhost/lansentry?sslmode=disable"
+	connStr := config.postgres
 	db, err := sql.Open("postgres", connStr)
 	//db, err := sql.Open("mysql", "lansentry:3WKbnuzBEgM7ysuYVg68ogwMvcf7zfRu@10.20.1.102/lansentry")
 	if err != nil {
@@ -124,7 +146,19 @@ func mark_foriegn_as_guest(db *sql.DB, data host_obj) {
 }
 
 func alert_on_bad_boxen(data []host_obj) {
-	//
+	credArray := strings.Split(string(config.ntfy_creds), ":")
+	for i := 0; i < len(data); i++ {
+		client := &http.Client{}
+		data := "Unkown host:" + data[i].ip
+		req, err := http.NewRequest(http.MethodPut, config.ntfy_link, strings.NewReader(data))
+		if err != nil {
+			panic(err)
+		}
+		req.SetBasicAuth(credArray[0], strings.TrimSpace(credArray[1]))
+		req.Header.Add("Tag", "biohazard")
+		req.Header.Add("prio", "high")
+		client.Do(req)
+	}
 }
 
 func purge_bad_boxen(db *sql.DB) {
@@ -134,6 +168,7 @@ func purge_bad_boxen(db *sql.DB) {
 }
 
 func main() {
+	parse_config()
 	for {
 		connection := db_init()
 		if time.Now().Hour() == 13 && time.Now().Minute() == 7 {
