@@ -34,10 +34,19 @@ func parse_config() {
 		fmt.Println("Can't read config file")
 		panic(err)
 	}
-	settings_array := strings.Split(string(settings), "\n")
-	config.postgres = strings.TrimSpace(settings_array[1])
-	config.ntfy_link = strings.TrimSpace(settings_array[3])
-	config.ntfy_creds = strings.TrimSpace(settings_array[5])
+	settings_array := strings.Split(strings.TrimSpace(string(settings)), "\n")
+	config_map := make(map[string]string)
+	for i := 0; i < len(settings_array); i++ {
+		keyvalue := strings.Split(settings_array[i], "=")
+		config_map[keyvalue[0]] = keyvalue[1]
+	}
+	if config_map["postgres_ssl"] == "false" {
+		config.postgres = config_map["postgres"] + "?sslmode=disable"
+	} else {
+		config.postgres = config_map["postgres"]
+	}
+	config.ntfy_link = config_map["ntfy"]
+	config.ntfy_creds = config_map["ntfy_creds"]
 }
 
 func arpscan(iface string) []host_obj {
