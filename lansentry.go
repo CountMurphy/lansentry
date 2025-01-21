@@ -49,6 +49,16 @@ func parse_config() {
 	config.ntfy_creds = config_map["ntfy_creds"]
 }
 
+func create_table(db *sql.DB) {
+	query := "CREATE TABLE hosts ( id SERIAL PRIMARY KEY, ip VARCHAR(45), mac VARCHAR(100), vendor VARCHAR(100), isknown BOOLEAN, Notes VARCHAR(500), isGuest BOOLEAN);"
+	stmt, err := db.Prepare(query)
+	if err != nil {
+		panic(err)
+	}
+	stmt.Query()
+	stmt.Close()
+}
+
 func arpscan(iface string) []host_obj {
 	output, err := exec.Command("arp-scan", "-glNx", "-I", iface).Output()
 	if err != nil {
@@ -92,6 +102,11 @@ func write_new_hosts(db *sql.DB, data host_obj) {
 func db_maccheck(db *sql.DB, data host_obj) host_obj {
 	query := "select mac, ip from hosts where mac = $1"
 	stmt, err := db.Prepare(query)
+	// needs both checks or will seg fault trying to get error message
+	if err != nil && err.Error() == "pq: relation \"hosts\" does not exist" {
+		create_table(db)
+		return db_maccheck(db, data)
+	}
 	if err != nil {
 		panic(err)
 	}
