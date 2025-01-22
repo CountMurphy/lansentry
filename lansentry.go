@@ -156,6 +156,7 @@ func db_get_foriegn_boxen(db *sql.DB) []host_obj {
 		mark_foriegn_as_guest(db, data)
 		ret_val = append(ret_val, data)
 	}
+	stmt.Close()
 	return ret_val
 }
 
@@ -189,6 +190,7 @@ func purge_bad_boxen(db *sql.DB) {
 	query := "delete from hosts where isGuest = true"
 	stmt, _ := db.Prepare(query)
 	stmt.Query()
+	stmt.Close()
 }
 
 func main() {
