@@ -59,21 +59,30 @@ func create_table(db *sql.DB) {
 	stmt.Close()
 }
 
-func arpscan(iface string) []host_obj {
-	output, err := exec.Command("arp-scan", "-glNx", "-I", iface).Output()
+func arpscan(lan string) []host_obj {
+	output, err := exec.Command("nmap", "-sn", "-PR", lan).Output()
 	if err != nil {
 		fmt.Println(err)
 		return nil
 	}
 	var retVal []host_obj
 	hosts := strings.Split(string(output), "\n")
-	for _, host := range hosts {
-		machines := strings.Split(host, "\t")
-		if len(machines) < 3 {
+	tmp_host := host_obj{}
+	for _, output := range hosts {
+		if strings.Contains(output, "Starting Nmap") {
 			continue
 		}
-		tmp_host := host_obj{ip: string(machines[0]), mac: string(machines[1]), vendor: string(machines[2])}
-		retVal = append(retVal, tmp_host)
+		if strings.Contains(output, "Nmap scan report for") {
+			ip := strings.Replace(output, "Nmap scan report for", "", -1)
+			tmp_host.ip = ip
+		}
+		if strings.Contains(output, "MAC Address") {
+			output = strings.Replace(output, "MAC Address: ", "", -1)
+			mac_data := strings.Split(output, "(")
+			tmp_host.mac = mac_data[0]
+			tmp_host.vendor = strings.Replace(mac_data[1], ")", "", -1)
+			retVal = append(retVal, tmp_host)
+		}
 	}
 	return retVal
 }
@@ -81,7 +90,6 @@ func arpscan(iface string) []host_obj {
 func db_init() *sql.DB {
 	connStr := config.postgres
 	db, err := sql.Open("postgres", connStr)
-	//db, err := sql.Open("mysql", "lansentry:3WKbnuzBEgM7ysuYVg68ogwMvcf7zfRu@10.20.1.102/lansentry")
 	if err != nil {
 		panic(err)
 	}

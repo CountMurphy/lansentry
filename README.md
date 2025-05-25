@@ -7,6 +7,6 @@ select * from hosts;
 From here you can manually add notes to the device, or mark it as is known to prevent future notifications. Devices marked as isguest will be alerted on once a day until they either disconnect, or are marked as owned.
 
 ## Requirements
-- arp-scan
+- nmap
 - postgresql
 - ntfy end-point
