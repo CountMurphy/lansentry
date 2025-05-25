@@ -79,7 +79,7 @@ func arpscan(lan string) []host_obj {
 		if strings.Contains(output, "MAC Address") {
 			output = strings.Replace(output, "MAC Address: ", "", -1)
 			mac_data := strings.Split(output, "(")
-			tmp_host.mac = mac_data[0]
+			tmp_host.mac = strings.TrimSpace(strings.ToLower(mac_data[0]))
 			tmp_host.vendor = strings.Replace(mac_data[1], ")", "", -1)
 			retVal = append(retVal, tmp_host)
 		}
