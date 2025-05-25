@@ -203,6 +203,10 @@ func purge_bad_boxen(db *sql.DB) {
 
 func main() {
 	parse_config()
+	if len(os.Args) < 2 {
+		fmt.Println("Need to pass ip cider range")
+		os.Exit(1)
+	}
 	for {
 		connection := db_init()
 		if time.Now().Hour() == 13 && time.Now().Minute() == 7 {

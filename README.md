@@ -11,4 +11,4 @@ From here you can manually add notes to the device, or mark it as is known to pr
 - postgresql
 - ntfy end-point
 
-To properly obtain MAC addresses, lansentry needs to run as root.
+Lansentry needs to run as root.
