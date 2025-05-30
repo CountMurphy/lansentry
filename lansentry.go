@@ -74,7 +74,7 @@ func arpscan(lan string) []host_obj {
 		}
 		if strings.Contains(output, "Nmap scan report for") {
 			ip := strings.Replace(output, "Nmap scan report for", "", -1)
-			tmp_host.ip = ip
+			tmp_host.ip = strings.TrimSpace(ip)
 		}
 		if strings.Contains(output, "MAC Address") {
 			output = strings.Replace(output, "MAC Address: ", "", -1)
