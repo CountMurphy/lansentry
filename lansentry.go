@@ -3,7 +3,6 @@ package main
 import (
 	"database/sql"
 	"fmt"
-	"net/http"
 	"os"
 	"os/exec"
 	"strings"
@@ -21,9 +20,8 @@ type host_obj struct {
 }
 
 type config_obj struct {
-	postgres   string
-	ntfy_creds string
-	ntfy_link  string
+	postgres      string
+	apprise_creds string
 }
 
 var config config_obj
@@ -45,8 +43,7 @@ func parse_config() {
 	} else {
 		config.postgres = config_map["postgres"]
 	}
-	config.ntfy_link = config_map["ntfy"]
-	config.ntfy_creds = config_map["ntfy_creds"]
+	config.apprise_creds = config_map["apprise_creds"]
 }
 
 func create_table(db *sql.DB) {
@@ -179,18 +176,12 @@ func mark_foriegn_as_guest(db *sql.DB, data host_obj) {
 }
 
 func alert_on_bad_boxen(data []host_obj) {
-	credArray := strings.Split(string(config.ntfy_creds), ":")
 	for i := 0; i < len(data); i++ {
-		client := &http.Client{}
-		data := "Unkown host:" + data[i].ip
-		req, err := http.NewRequest(http.MethodPut, config.ntfy_link, strings.NewReader(data))
+		_, err := exec.Command("apprise", config.apprise_creds+"?priority=5&xtags=biohazard", "-b", "Unkown host:"+data[i].ip).Output()
 		if err != nil {
-			panic(err)
+			fmt.Println(err)
+			return
 		}
-		req.SetBasicAuth(credArray[0], strings.TrimSpace(credArray[1]))
-		req.Header.Add("Tag", "biohazard")
-		req.Header.Add("prio", "high")
-		client.Do(req)
 	}
 }
 
