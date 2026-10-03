@@ -145,6 +145,13 @@ func db_get_foriegn_boxen(db *sql.DB) []host_obj {
 	query := "select ip from hosts where isknown = false and isGuest = false"
 	stmt, err := db.Prepare(query)
 	if err != nil {
+		// if nmap returns zero results (impossible if arp scan succeeded), it didn't run as root.
+		// if not root, code to create db never runs and this trips
+		// could create here, but would always be empty
+		if err.Error() == "pq: relation \"hosts\" does not exist" {
+			fmt.Println("Lansentry must run as root")
+			os.Exit(1)
+		}
 		panic(err)
 	}
 	rows, err := stmt.Query()
