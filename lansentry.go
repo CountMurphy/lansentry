@@ -177,7 +177,7 @@ func mark_foriegn_as_guest(db *sql.DB, data host_obj) {
 
 func alert_on_bad_boxen(data []host_obj) {
 	for i := 0; i < len(data); i++ {
-		_, err := exec.Command("apprise", config.apprise_creds+"?priority=5&xtags=biohazard", "-b", "Unkown host:"+data[i].ip).Output()
+		_, err := exec.Command("apprise", config.apprise_creds+"?priority=high", "-b", "☣️ Unkown host:"+data[i].ip).Output()
 		if err != nil {
 			fmt.Println(err)
 			return
